@@ -13,6 +13,7 @@ const IconButton = ({ onClick, icon: Icon, className = "", disabled = false, tit
 export default function Browser() {
   const [tabs, setTabs] = useState<Tab[]>([{ id: 1, title: "Tab 1", url: "about:blank", active: true, reloadKey: 0 }]);
   const [url, setUrl] = useState("about:blank");
+  const [isAddressBarFocused, setIsAddressBarFocused] = useState(false);
   const [favicons, setFavicons] = useState<Record<number, string>>({});
   const [bookmarks, setBookmarks] = useState<Array<{ Title: string; url: string; favicon?: string }>>([]);
   const [_proxyReadyTick, setProxyReadyTick] = useState(0);
@@ -84,7 +85,12 @@ export default function Browser() {
     const actualUrl = getActualUrl(iframe);
     const nextUrl = actualUrl && actualUrl !== "about:blank" ? actualUrl : activeTab.url;
     setUrl(nextUrl);
-  }, [activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab?.id]); // Only resync the address bar when the ACTIVE TAB actually changes
+  // (switching tabs), not whenever `tabs` is touched for unrelated reasons like
+  // favicon/title tracking further down — otherwise every such update recreates
+  // `activeTab` via useMemo and this effect fires mid-keystroke, overwriting
+  // whatever the user is typing/deleting in the address bar.
 
   useEffect(() => {
     if (!activeTab) return;
@@ -102,7 +108,7 @@ export default function Browser() {
 
     const updateState = () => {
       const actualUrl = getActualUrl(iframe);
-      if (actualUrl && actualUrl !== "about:blank" && actualUrl !== url) setUrl(actualUrl);
+      if (actualUrl && actualUrl !== "about:blank" && actualUrl !== url && !isAddressBarFocused) setUrl(actualUrl);
 
       try {
         const iframeTitle = iframe.contentWindow?.document?.title;
@@ -455,7 +461,15 @@ export default function Browser() {
         <div className="flex-1">
           <div className={actionBarClass}>
             <Lock className="h-3.5 w-3.5 text-text-placeholder" />
-            <input className={addressInputClass} value={url} placeholder="Search or enter address" onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleNavigate(e.currentTarget.value)} />
+            <input
+              className={addressInputClass}
+              value={url}
+              placeholder="Search or enter address"
+              onChange={(e) => setUrl(e.target.value)}
+              onFocus={() => setIsAddressBarFocused(true)}
+              onBlur={() => setIsAddressBarFocused(false)}
+              onKeyDown={(e) => e.key === "Enter" && handleNavigate(e.currentTarget.value)}
+            />
           </div>
         </div>
 

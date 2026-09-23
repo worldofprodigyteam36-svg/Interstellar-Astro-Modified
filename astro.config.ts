@@ -47,6 +47,9 @@ export default defineConfig({
   },
   vite: {
     logLevel: "warn",
+       server: {
+         allowedHosts: [".replit.dev"],
+       },
     define: {
       __COMMIT_DATE__: JSON.stringify(
         (() => {
